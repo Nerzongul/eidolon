@@ -11,27 +11,27 @@ public class EventService : MonoBehaviour
     public int cooldownBeforeSend;    
 
     [Serializable]
-    public class MyJSON
-    {
+    public class ElemJSON
+    {        
         public string type;
         public string data;
     }
 
-    private List<string> buffer = new List<string>();
+    [Serializable]
+    public class JSON
+    {
+        public List<ElemJSON> events = new List<ElemJSON>();
+    }
+        
     private IEnumerator coroutine;
     private bool CR_running = false;
+    private JSON eventsJSON = new JSON();
 
     private IEnumerator WaitAndSend()
     {
         CR_running = true;
         yield return new WaitForSeconds(cooldownBeforeSend);
-        string json = "{\"events\": [";
-        foreach (string elem in buffer)
-        {
-            json += elem + ",";
-        }
-        
-        json = json.Substring(0, json.Length - 1) + "] }";
+        string json = JsonUtility.ToJson(eventsJSON);
         print(json);
 
         try
@@ -50,7 +50,7 @@ public class EventService : MonoBehaviour
             {
                 if (httpResponse.StatusCode == HttpStatusCode.OK)
                 {
-                    buffer.Clear();
+                    eventsJSON.events.Clear();
                     CR_running = false;
                 }
                 else
@@ -69,11 +69,12 @@ public class EventService : MonoBehaviour
 
     public void TrackEvent(string type, string data)
     {
-        MyJSON myJSON = new MyJSON();
+        ElemJSON myJSON = new ElemJSON();
         myJSON.type = type;
         myJSON.data = data;
-        string json = JsonUtility.ToJson(myJSON);        
-        buffer.Add(json);
+
+        eventsJSON.events.Add(myJSON);       
+        
         if (!CR_running)
         {
             coroutine = WaitAndSend();
